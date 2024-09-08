@@ -10,21 +10,15 @@ const user = {
         error(res, result.msg);
       }
     })
-    .catch((err) => {
-        error(res, err);
-    });
   },
   login: async (req, res) => {
     model.login(req.body).then((result) => {
         if (result.status == "ok") {
-            success(res, result.msg);
+            success(res, result.data);
           } else {
             error(res, result.msg);
           }
     })
-    .catch((err) => {
-        error(res, err);
-    });
   }
 };
 

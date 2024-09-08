@@ -8,7 +8,7 @@ const upload = multer({
     },
 });
 
-router.post("/", upload.single("foto_profile"), controller.addUser);
+router.post("/", upload.single("foto_profil"), controller.addUser);
 router.post("/login", controller.login);
 
 module.exports = router;

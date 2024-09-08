@@ -6,6 +6,8 @@ const usersRouter = require("./routers/user.router");
 const app = express()
 const port = 3000
 
+app.use(express.json());
+
 app.get('/', async(req, res) => {
     try {
         const { data, error } = await supabase.from('user').select('*').limit(1);

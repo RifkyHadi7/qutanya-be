@@ -34,7 +34,6 @@ const user = {
                 .from('biodata')
                 .select('*')
                 .eq('id_user', userData.id)
-                .single();
     
             if (biodataError) {
                 console.error('Biodata Query Error:', biodataError.message);
@@ -49,15 +48,16 @@ const user = {
                 biodata: biodata
             };
     
-            return { status: 'ok', msg: 'Login successful', data: responseData };
+            return { status: 'ok', data: responseData };
         } catch (err) {
             console.error('Login Exception:', err.message);
             return { status: 'err', msg: 'An error occurred during login' };
         }
     },
 	addUser: async (data, file) => {
-		const { nama, email } = data;
+		const { nama, email, password } = data;
 		data.foto = "";
+        const hashedpassword = await bcrypt.hash(password, 12)
 		if (file && file.size > 0) {
 			const pathname = `${nama}`;
 
@@ -85,7 +85,7 @@ const user = {
             {
                 nama: nama,
                 email: email,
-                password: data.password,
+                password: hashedpassword,
                 foto_profil: data.foto,
             }
         ]);  
