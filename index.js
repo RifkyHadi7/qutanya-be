@@ -1,11 +1,12 @@
 require('dotenv').config();
-
 const supabase = require('./constraint/database')
 const express = require('express')
+const cors = require('cors')
 const usersRouter = require("./routers/user.router");
 const app = express()
 const port = 3000
 
+app.use(cors())
 app.use(express.json());
 
 app.get('/', async(req, res) => {
