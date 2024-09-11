@@ -57,7 +57,8 @@ const user = {
 	addUser: async (data, file) => {
 		const { nama, email, password, tanggal_lahir, provinsi, kota, pekerjaan, gender } = data;
 		data.foto = "";
-		gender = (gender = "Pria") ? true : false
+		const genderbool = (gender === "Pria");
+		console.log(genderbool)
         const hashedpassword = await bcrypt.hash(password, 12)
 		if (file && file.size > 0) {
 			const pathname = `${nama}`;
@@ -93,18 +94,25 @@ const user = {
 		if (error) {
 			return { status: "err", msg: error };
 		}
-
+		const {data : id_user, error: errorId }= await supabase
+			.from("user")
+			.select("id")
+			.eq("email", email)
+		if(errorId){
+			return {status: "err", msg: errorId}
+		}
+		const iduser = id_user[0].id
 		const { error: bioError } = await supabase.from("biodata").insert([
 			{
-				id_user: userId,
+				id_user: iduser,
 				tanggal_lahir: tanggal_lahir,
 				provinsi: provinsi,
 				kota: kota,
 				pekerjaan: pekerjaan,
-				gender: gender, 
+				gender: genderbool, 
 			}
 		]);
-	
+		console.log(iduser)
 		if (bioError) {
 			return { status: "err", msg: bioError };
 		} 
