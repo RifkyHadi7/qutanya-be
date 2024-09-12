@@ -4,6 +4,7 @@ const express = require('express')
 const cors = require('cors')
 const usersRouter = require("./routers/user.router");
 const artikelRouter = require("./routers/artikel.router");
+const saldoRouter = require("./routers/saldo.router");
 const app = express()
 const port = 3000
 
@@ -32,6 +33,7 @@ app.get('/', async(req, res) => {
 })
 app.use("/user", usersRouter)
 app.use("/artikel", artikelRouter)
+app.use("/saldo", saldoRouter)
 app.use("*", (_req, res) => res.status(404).json({ error: "Not Found" }));
 
 app.listen(port, () => {

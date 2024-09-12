@@ -4,7 +4,7 @@ const artikel = {
     getAllArtikel: async() => {
         const { data, error } = await supabase
             .from("artikel")
-            .select("id, judul, isi, cover");
+            .select("id, judul, deskripsi, isi, cover");
     
         if (error) {
             return { status: "err", msg: error.message };
