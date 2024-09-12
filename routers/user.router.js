@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const controller = require("../controllers/user.controller");
+const controllerForm = require("../controllers/survei.controller");
 const multer = require("multer");
 const upload = multer({
     limits: {
@@ -10,5 +11,6 @@ const upload = multer({
 
 router.post("/", upload.single("foto_profil"), controller.addUser);
 router.post("/login", controller.login);
+
 
 module.exports = router;
