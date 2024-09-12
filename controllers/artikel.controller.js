@@ -10,6 +10,16 @@ const artikel = {
             error(res, result.msg);
           }
     })
+  },
+  getAllArtikelbyId: async (req, res) => {
+    const id = req.params.id;
+    model.getAllArtikelbyId(id).then((result) => {
+        if (result.status == "ok") {
+            success(res, result.data);
+          } else {
+            error(res, result.msg);
+          }
+    })
   }
 };
 
