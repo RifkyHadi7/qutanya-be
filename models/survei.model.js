@@ -220,7 +220,7 @@ const survei = {
     }
   },
 
-  klaimReward: async ({ link_form, id_user_create }) => {
+  claimReward: async ({ link_form, id_user_create }) => {
     try {
       const responseLinkPattern =
         /https:\/\/docs\.google\.com\/forms\/d\/e\/.*\/formResponse/;
@@ -251,11 +251,11 @@ const survei = {
           email: user.email,
           nama: user.nama,
           tanggal_lahir: user.biodata.tanggal_lahir,
-          gender:user.biodata.gender,
-          pekerjaan:user.biodata.pekerjaan,
-          judul_survei:dataForm.judul,
-          provinsi:user.biodata.provinsi,
-          kota:user.biodata.kota,
+          gender: user.biodata.gender,
+          pekerjaan: user.biodata.pekerjaan,
+          judul_survei: dataForm.judul,
+          provinsi: user.biodata.provinsi,
+          kota: user.biodata.kota,
         },
       ]);
 
@@ -265,16 +265,20 @@ const survei = {
 
       let keterangan = "Add reward survei " + dataForm.judul;
 
-      const transaksiData = await saldo.addTransaksi(user.email,dataForm.hadiah,true,keterangan)
+      const transaksiData = await saldo.addTransaksi(
+        user.email,
+        dataForm.hadiah,
+        true,
+        keterangan
+      );
 
       return {
         status: "ok",
         data: {
           updateSaldo,
-          message : transaksiData,
+          message: transaksiData,
         },
       };
-
     } catch (error) {
       return { status: "err", msg: error.message };
     }
@@ -364,11 +368,72 @@ const survei = {
     }
   },
 
-  getDataAll: async ({filter}) => {
+  getDataAll: async ({ filter }) => {
+    try {
+      if (!filter) {
+        const { data, error } = await getSurveiAll(filter);
+        
+        return {
+          status: "ok",
+          data,
+        };
+      }
+      const filterArray = filter.split(",").map(Number);
+      
+      const { data, error } = await getSurveiAll(filterArray);
 
-  }  
+      if (error) {
+        throw new Error(error);
+      }
 
+      return {
+        status: "ok",
+        data: {
+          data,
+        },
+      };
+    } catch (error) {
+      return { status: "err", msg: error.message };
+    }
+  },
 
+  getDataById: async ({ id }) => {
+    try {
+      const { data, error } = await getSurveiById(id);
+
+      if (error) {
+        throw new Error(error);
+      }
+
+      return {
+        status: "ok",
+        data: {
+          data,
+        },
+      };
+    } catch (error) {
+      return { status: "err", msg: error.message };
+    }
+  },
+
+  getRiwayatSurvei: async ({ id_user }) => {
+    try {
+      const { data, error } = await getRiwayatSurvei(id_user);
+
+      if (error) {
+        throw new Error(error);
+      }
+
+      return {
+        status: "ok",
+        data: {
+          data,
+        },
+      };
+    } catch (error) {
+      return { status: "err", msg: error.message };
+    }
+  },
 };
 
 async function getUserById(userId) {
@@ -383,7 +448,22 @@ async function getUserById(userId) {
     return null;
   }
 
-  return user;
+  return { user, error };
+}
+
+async function getSurveiById(Id) {
+  const { data: survei, error } = await supabase
+    .from("survei")
+    .select("*")
+    .eq("id", Id)
+    .single();
+
+  if (error) {
+    console.error("Error fetching survei:", error);
+    return null;
+  }
+
+  return { survei, error };
 }
 
 async function getSurveiByOrderiD(orderId) {
@@ -398,7 +478,7 @@ async function getSurveiByOrderiD(orderId) {
     return null;
   }
 
-  return survei;
+  return { survei, error };
 }
 
 async function updateSurveiStatus(surveiId, status_payment, status_survei) {
@@ -421,7 +501,7 @@ async function getKategoriData(kategoriIds) {
     return null;
   }
 
-  return kategori;
+  return { kategori, error };
 }
 
 async function getSurveiByForm(formData) {
@@ -436,21 +516,40 @@ async function getSurveiByForm(formData) {
     return null;
   }
 
-  return survei;
+  return { survei, error };
 }
 
-async function getSurveiAll(role) {
-  const { data, error } = await supabase
-    .from("users")
-    .select("*, kategori")   
-    .eq("role", role);  
+async function getSurveiAll(filter) {
+  let query = supabase.from("survei").select(`*`);
+
+  if (filter) {
+    query = supabase
+      .from("kategori_survei")
+      .select(`*, survei(*)`)
+      .in("id_filter", filter);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
-    console.error("Error fetching users by role:", error);
+    throw new Error(`Error fetching survei: ${error.message}`);
+  }
+
+  return { data, error };
+}
+
+async function getRiwayatSurvei(id, id_user) {
+  const { data, error } = await supabase
+    .from("riwayat_survei")
+    .select(`*, survei(*)`)
+    .in("id_user", id_user);
+
+  if (error) {
+    console.error("Error fetching survei with filter:", error);
     return null;
   }
 
-  return data;
+  return { data, error };
 }
 
 module.exports = survei;

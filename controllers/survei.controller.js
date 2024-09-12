@@ -29,6 +29,46 @@ const survei = {
       }
     });
   },
+
+  claimReward: async (req, res) => {
+    model.claimReward(req.body).then((result) => {
+      if (result.status == "ok") {
+        success(res, result.data);
+      } else {
+        error(res, result.msg);
+      }
+    });
+  },
+
+  getDataAll: async (req, res) => {
+    model.getDataAll(req.body).then((result) => {
+      if (result.status == "ok") {
+        success(res, result.data);
+      } else {
+        error(res, result.msg);
+      }
+    });
+  },
+
+  getDataById: async (req, res) => {
+    model.getDataById(req.body).then((result) => {
+      if (result.status == "ok") {
+        success(res, result.data);
+      } else {
+        error(res, result.msg);
+      }
+    });
+  },
+
+  getRiwayatSurvei: async (req, res) => {
+    model.getRiwayatSurvei(req.body).then((result) => {
+      if (result.status == "ok") {
+        success(res, result.data);
+      } else {
+        error(res, result.msg);
+      }
+    });
+  },
 };
 
 module.exports = survei;
