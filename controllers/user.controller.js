@@ -19,6 +19,15 @@ const user = {
             error(res, result.msg);
           }
     })
+  },
+  updateUser: async (req, res) => {
+    model.updateUser(req.body).then((result) => {
+        if (result.status == "ok") {
+            success(res, result.msg);
+          } else {
+            error(res, result.msg);
+          }
+    })
   }
 };
 
