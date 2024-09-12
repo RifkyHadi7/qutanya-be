@@ -5,6 +5,7 @@ const cors = require('cors')
 const usersRouter = require("./routers/user.router");
 const surveiRouter = require("./routers/survei.router");
 const artikelRouter = require("./routers/artikel.router");
+const saldoRouter = require("./routers/saldo.router");
 const app = express()
 const url = require('url');
 const port = 3000
@@ -37,6 +38,7 @@ app.use("/survei", surveiRouter)
 
 
 app.use("/artikel", artikelRouter)
+app.use("/saldo", saldoRouter)
 app.use("*", (_req, res) => res.status(404).json({ error: "Not Found" }));
 
 // Print all routes
