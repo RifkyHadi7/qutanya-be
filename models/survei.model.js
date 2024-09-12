@@ -363,6 +363,12 @@ const survei = {
       return { status: "err", msg: error.message };
     }
   },
+
+  getDataAll: async ({filter}) => {
+
+  }  
+
+
 };
 
 async function getUserById(userId) {
@@ -431,6 +437,20 @@ async function getSurveiByForm(formData) {
   }
 
   return survei;
+}
+
+async function getSurveiAll(role) {
+  const { data, error } = await supabase
+    .from("users")
+    .select("*, kategori")   
+    .eq("role", role);  
+
+  if (error) {
+    console.error("Error fetching users by role:", error);
+    return null;
+  }
+
+  return data;
 }
 
 module.exports = survei;

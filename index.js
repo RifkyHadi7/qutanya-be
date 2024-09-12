@@ -41,9 +41,6 @@ app.use("/artikel", artikelRouter)
 app.use("/saldo", saldoRouter)
 app.use("*", (_req, res) => res.status(404).json({ error: "Not Found" }));
 
-// Print all routes
-app._router.stack.forEach(print.bind(null, []));
-
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
 })
