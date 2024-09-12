@@ -4,6 +4,7 @@ const { google } = require("googleapis");
 const { authenticate } = require("@google-cloud/local-auth");
 const supabase = require("../constraint/database");
 const midtransClient = require("midtrans-client");
+const saldo = require("./saldo.model");
 
 const survei = {
   create: async ({
@@ -262,18 +263,15 @@ const survei = {
         throw new Error("Sorry you have claimed");
       }
 
-      const updateSaldo = {
-        saldo: user.saldo + dataForm.hadiah
-      };
-      
-      const updatedUser = await updateUserById(id_user_create, updateSaldo);
+      let keterangan = "Add reward survei " + dataForm.judul;
 
-      
+      const transaksiData = await saldo.addTransaksi(user.email,dataForm.hadiah,true,keterangan)
 
       return {
         status: "ok",
         data: {
           updateSaldo,
+          message : transaksiData,
         },
       };
 
@@ -433,20 +431,6 @@ async function getSurveiByForm(formData) {
   }
 
   return survei;
-}
-
-async function updateUserById(userId, newUserData) {
-  const { data, error } = await supabase
-    .from("users")
-    .update(newUserData)
-    .eq("id", userId);
-
-  if (error) {
-    console.error("Error updating user data:", error);
-    return null;
-  }
-
-  return data;
 }
 
 module.exports = survei;
