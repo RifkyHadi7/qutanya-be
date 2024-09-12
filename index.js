@@ -3,6 +3,7 @@ const supabase = require('./constraint/database')
 const express = require('express')
 const cors = require('cors')
 const usersRouter = require("./routers/user.router");
+const artikelRouter = require("./routers/artikel.router");
 const app = express()
 const port = 3000
 
@@ -19,7 +20,6 @@ app.get('/', async(req, res) => {
           statusCode: 200,
           status: "success" ,
           message: 'Terhubung ke database Supabase',
-          data
         });
       } catch (error) {
         res.status(500).json({
@@ -31,6 +31,7 @@ app.get('/', async(req, res) => {
       }
 })
 app.use("/user", usersRouter)
+app.use("/artikel", artikelRouter)
 app.use("*", (_req, res) => res.status(404).json({ error: "Not Found" }));
 
 app.listen(port, () => {
