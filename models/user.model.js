@@ -55,8 +55,10 @@ const user = {
         }
     },
 	addUser: async (data, file) => {
-		const { nama, email, password } = data;
+		const { nama, email, password, tanggal_lahir, provinsi, kota, pekerjaan, gender } = data;
 		data.foto = "";
+		const genderbool = (gender === "Pria");
+		console.log(genderbool)
         const hashedpassword = await bcrypt.hash(password, 12)
 		if (file && file.size > 0) {
 			const pathname = `${nama}`;
@@ -92,49 +94,65 @@ const user = {
 		if (error) {
 			return { status: "err", msg: error };
 		}
+		const {data : id_user, error: errorId }= await supabase
+			.from("user")
+			.select("id")
+			.eq("email", email)
+		if(errorId){
+			return {status: "err", msg: errorId}
+		}
+		const iduser = id_user[0].id
+		const { error: bioError } = await supabase.from("biodata").insert([
+			{
+				id_user: iduser,
+				tanggal_lahir: tanggal_lahir,
+				provinsi: provinsi,
+				kota: kota,
+				pekerjaan: pekerjaan,
+				gender: genderbool, 
+			}
+		]);
+		console.log(iduser)
+		if (bioError) {
+			return { status: "err", msg: bioError };
+		} 
 		return { status: "ok", msg: "success add user" };
 	},
-	updateUser: async (data, { nim }) => {
-		const { id_proker } = data;
-		delete data.id_proker;
-		console.log(nim);
-		const { error } = await supabase
-			.from("motion24_anggotaBEM")
-			.update(data)
-			.eq("nim", nim);
+	updateUser: async (userId, data, file) => {
+		const { nama, biodata } = data;
+		let updatedData = { nama, biodata };
+	
+		if (file && file.size > 0) {
+			const pathname = `${nama}`;
+	
+			const [
+				{ error: errUpload },
+				{
+					data: { publicUrl },
+				},
+			] = await Promise.all([
+				supabase.storage.from("foto_profile").upload(pathname, file.buffer, {
+					cacheControl: "3600",
+					contentType: file.mimetype,
+				}),
+				supabase.storage.from("foto_profile").getPublicUrl(pathname),
+			]);
+	
+			if (errUpload) {
+				return { status: "err", msg: errUpload };
+			}
+	
+			updatedData.foto_profil = publicUrl;
+		}
+	
+		const { error } = await supabase.from("user").update(updatedData).eq("id", userId);
+	
 		if (error) {
-			return { status: "err", msg: error };
+			return { status: "err", msg: error.message };
 		}
-		if (id_proker) {
-			const { data } = await supabase
-				.from("motion24_pjProker")
-				.select("*")
-				.eq("nim", nim);
-			if (data.length > 0) {
-				const { error } = await supabase
-					.from("motion24_pjProker")
-					.delete()
-					.eq("nim", nim);
-				if (error) {
-					return { status: "err", msg: error };
-				}
-			}
-
-			const { error } = await supabase
-				.from("motion24_pjProker")
-				.upsert(
-					id_proker.map((id) => ({
-						nim,
-						id_proker: id,
-					}))
-				)
-				.eq("nim", nim);
-			if (error) {
-				return { status: "err", msg: error };
-			}
-		}
-		return { status: "ok", msg: "success update user" };
-	},
+	
+		return { status: "ok", msg: "User updated successfully" };
+	}	
 };
 
 module.exports = user;
