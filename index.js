@@ -11,7 +11,14 @@ const app = express()
 const url = require('url');
 const port = 3000
 
-app.use(cors())
+const corsOptions = {
+  origin: ['https://qutanya-id.vercel.app'], 
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], 
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true, 
+};
+
+app.use(cors(corsOptions))
 app.use(express.json());
 
 app.get('/', async(req, res) => {
