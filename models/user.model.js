@@ -45,7 +45,8 @@ const user = {
                 nama: userData.nama,
                 saldo: userData.saldo,
                 foto_profil: userData.foto_profil,
-                biodata: biodata
+                biodata: biodata,
+				uuid:userData.id
             };
     
             return { status: 'ok', data: responseData };

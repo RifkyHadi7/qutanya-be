@@ -55,7 +55,7 @@ const survei = {
       );
 
       // id_share_link
-      const share_id_form = link_form.match(
+      const share_id_form = form_res.match(
         /https:\/\/docs\.google\.com\/forms\/d\/e\/([^\/]+)\/viewform/
       )[1];
 
@@ -84,7 +84,7 @@ const survei = {
 
       // get user
       const user = await getUserById(id_user_create);
-
+      console.log(user);
       // Persiapkan parameter transaksi
       let parameter = {
         transaction_details: {
@@ -110,6 +110,8 @@ const survei = {
         throw new Error(e.message);
       }
 
+      console.log("aman");
+
       const { data, error } = await supabase
         .from("survei")
         .insert([
@@ -119,32 +121,32 @@ const survei = {
             link_meta: form_meta_req,
             hadiah: hadiah,
             saldo: harga,
-            kategori: kategori,
             status_payment: "PENDING!",
             payment_url: midtransLink,
             id_pembuat: id_user_create,
             order_id: parameter.transaction_details.order_id,
             id_form: share_id_form,
           },
-        ])
-        .select();
-
+        ]).select();
+        console.log(data);
       if (error) {
         // return { status: "err", msg: error };
-        throw new Error(error);
+        throw new Error(error.message);
       }
+      console.log("aman2");
+      console.log(data);
 
       const id_survei = data[0].id;
 
-      const kategoriData = await getKategoriData(kategori);
-
-      for (const value of kategoriData) {
+      console.log(id_survei);
+;
+      for (const value of kategori) {
         const { data: kategori_survei, error: error_kategori } = await supabase
           .from("kategori_survei")
           .insert([
             {
               id_survei: id_survei,
-              id_filter: value.id,
+              id_filter: value,
             },
           ]);
         if (error_kategori) {
@@ -155,6 +157,7 @@ const survei = {
           throw new Error(error_kategori.message);
         }
       }
+      console.log("aman44");
 
       const { error_riwayat } = await supabase.from("riwayat_survei").insert([
         {
@@ -368,10 +371,10 @@ const survei = {
     }
   },
 
-  getDataAll: async ({ filter }) => {
+  getDataAll: async ({ filter, page }) => {
     try {
       if (!filter) {
-        const { data, error } = await getSurveiAll(filter);
+        const { data, error } = await getSurveiAll(filter, page);
         
         return {
           status: "ok",
@@ -380,7 +383,7 @@ const survei = {
       }
       const filterArray = filter.split(",").map(Number);
       
-      const { data, error } = await getSurveiAll(filterArray);
+      const { data, error } = await getSurveiAll(filterArray, page);
 
       if (error) {
         throw new Error(error);
@@ -438,8 +441,8 @@ const survei = {
 
 async function getUserById(userId) {
   const { data: user, error } = await supabase
-    .from("users") // The name of your table in the database
-    .select("*,biodata(*)")
+    .from("user") // The name of your table in the database
+    .select("*")
     .eq("id", userId)
     .single();
 
@@ -500,7 +503,6 @@ async function getKategoriData(kategoriIds) {
     console.error("Error fetching kategori:", error);
     return null;
   }
-
   return { kategori, error };
 }
 
@@ -520,13 +522,17 @@ async function getSurveiByForm(formData) {
 }
 
 async function getSurveiAll(filter) {
-  let query = supabase.from("survei").select(`*`);
+  let query;
 
   if (filter) {
+    // Query dengan filter
     query = supabase
       .from("kategori_survei")
       .select(`*, survei(*)`)
       .in("id_filter", filter);
+  } else {
+    // Query tanpa filter
+    query = supabase.from("survei").select(`*`);
   }
 
   const { data, error } = await query;
@@ -535,8 +541,16 @@ async function getSurveiAll(filter) {
     throw new Error(`Error fetching survei: ${error.message}`);
   }
 
+  // Jika ada data, lakukan pengurutan berdasarkan survei.created_at setelah data diambil
+  if (data && filter) {
+    data.forEach((item) => {
+      item.survei = item.survei.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    });
+  }
+
   return { data, error };
 }
+
 
 async function getRiwayatSurvei(id, id_user) {
   const { data, error } = await supabase
