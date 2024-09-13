@@ -34,6 +34,7 @@ const user = {
                 .from('biodata')
                 .select('*')
                 .eq('id_user', userData.id)
+				.single();
     
             if (biodataError) {
                 console.error('Biodata Query Error:', biodataError.message);
