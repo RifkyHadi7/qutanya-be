@@ -11,7 +11,11 @@ const app = express()
 const url = require('url');
 const port = 3001
 
-app.use(cors('*'))
+app.use(cors({
+  origin: '*', // Mengizinkan semua origin
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type']
+}))
 app.use(express.json());
 
 app.get('/', async(req, res) => {
