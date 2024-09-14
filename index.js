@@ -11,8 +11,8 @@ const app = express()
 const url = require('url');
 const port = 3000
 
-app.use(cors("*"))
 app.use(express.json());
+app.use(cors());
 
 app.get('/', async(req, res) => {
     try {
