@@ -14,7 +14,7 @@ const port = 3001
 app.use(cors({
   origin: '*', // Mengizinkan semua origin
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Access-Control-Allow-Origin']
+  allowedHeaders: ["*"]
 }))
 app.use(express.json());
 
