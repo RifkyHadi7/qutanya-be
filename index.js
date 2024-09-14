@@ -9,9 +9,9 @@ const saldoRouter = require("./routers/saldo.router");
 const kategoriRouter = require("./routers/kategori.router");
 const app = express()
 const url = require('url');
-const port = 3000
+const port = 3001
 
-app.use(cors())
+app.use(cors('*'))
 app.use(express.json());
 
 app.get('/', async(req, res) => {
@@ -35,7 +35,7 @@ app.get('/', async(req, res) => {
       }
 })
 app.use("/user", usersRouter)
-app.use("/survei", surveiRouter)
+app.use("/survei", surveiRouter, )
 
 app.use("/kategori", kategoriRouter)
 app.use("/artikel", artikelRouter)
