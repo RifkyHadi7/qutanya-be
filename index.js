@@ -9,13 +9,9 @@ const saldoRouter = require("./routers/saldo.router");
 const kategoriRouter = require("./routers/kategori.router");
 const app = express()
 const url = require('url');
-const port = 3001
+const port = 3000
 
-app.use(cors({
-  origin: '*', // Mengizinkan semua origin
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ["*"]
-}))
+app.use(cors("*"))
 app.use(express.json());
 
 app.get('/', async(req, res) => {
