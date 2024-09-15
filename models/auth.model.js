@@ -12,7 +12,6 @@ const getAuthorizationUrl = () => {
     return oauth2Client.generateAuthUrl({
         access_type: 'offline',
         scope: ['https://www.googleapis.com/auth/forms.body.readonly', "https://www.googleapis.com/auth/forms.responses.readonly"],
-        redirect_uri: REDIRECT_URI,
     });
 };
 

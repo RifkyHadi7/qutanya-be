@@ -16,7 +16,7 @@ router.get('/oauth2callback', async (req, res) => {
     try {
         const tokens = await getAccessTokenFromCode(code);
 
-        window.location.href(('https://qutanya-id.vercel.app/buatsurvey?token' + tokens));
+        res.redirect(('https://qutanya-id.vercel.app/buatsurvey?token=' + tokens));
     } catch (error) {
         res.status(500).send(error.message);
     }
