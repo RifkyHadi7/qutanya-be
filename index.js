@@ -14,7 +14,13 @@ const port = 3000;
 
 app.use(express.json());
 
-app.use(cors(('*')));
+app.use(
+  cors({
+    origin: ["https://qutanya-id.vercel.app", "https://be-qutanya.vercel.app"], // Allow your frontend origin
+    methods: ["GET", "POST","DELETE", "PUT", "PATCH"],
+    credentials: true,
+  })
+);
 
 app.get("/", async (req, res) => {
   try {
@@ -42,7 +48,7 @@ app.use("/survei", surveiRouter);
 app.use("/kategori", kategoriRouter);
 app.use("/artikel", artikelRouter);
 app.use("/saldo", saldoRouter);
-app.use("/auth",googleAuth);
+app.use("/auth", googleAuth);
 app.use("*", (_req, res) => res.status(404).json({ error: "Not Found" }));
 
 app.listen(port, () => {
