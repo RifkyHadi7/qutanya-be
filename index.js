@@ -48,8 +48,8 @@ app.get("/", async (req, res) => {
 app.use("/user", usersRouter);
 app.use("/survei", surveiRouter);
 
-app.use("/kategori", kategoriRouter);
 app.use("/artikel", artikelRouter);
+app.use("/kategori", kategoriRouter);
 app.use("/saldo", saldoRouter);
 app.use("*", (_req, res) => res.status(404).json({ error: "Not Found" }));
 
