@@ -1,5 +1,6 @@
 // authClient.js
-const { OAuth2 } = require('googleapis').auth;
+const { google } = require('googleapis');
+const { OAuth2 } = google.auth;
 
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
