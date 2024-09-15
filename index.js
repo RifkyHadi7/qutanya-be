@@ -14,17 +14,18 @@ const port = 3000;
 
 app.use(express.json());
 
-const corsConfig = cors({
-  origin: (origin, callback) => {
-    if (!origin || whitelist.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-});
+var allowlist = ['https://be-qutanya.vercel.app','https://be-qutanya.vercel.app/auth/auth/google','https://accounts.google.com/']
+var corsOptionsDelegate = function (req, callback) {
+  var corsOptions;
+  if (allowlist.indexOf(req.header('Origin')) !== -1) {
+    corsOptions = { origin: true } // reflect (enable) the requested origin in the CORS response
+  } else {
+    corsOptions = { origin: false } // disable CORS for this request
+  }
+  callback(null, corsOptions) // callback expects two parameters: error and options
+}
 
-app.use(cors(corsConfig));
+app.use(cors(corsOptionsDelegate));
 
 app.get("/", async (req, res) => {
   try {
