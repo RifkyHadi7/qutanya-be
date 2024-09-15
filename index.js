@@ -8,16 +8,9 @@ const artikelRouter = require("./routers/artikel.router");
 const saldoRouter = require("./routers/saldo.router");
 const kategoriRouter = require("./routers/kategori.router");
 const app = express();
-const url = require("url");
 const port = 3000;
 
 app.use(express.json());
-
-app.use(function(req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  next();
-});
 
 app.use(
   cors({
