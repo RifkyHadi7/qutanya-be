@@ -14,7 +14,7 @@ const port = 3000;
 
 app.use(express.json());
 
-var allowlist = ['https://be-qutanya.vercel.app','https://qutanya-id.vercel.app','https://be-qutanya.vercel.app/auth/auth/google','https://accounts.google.com/']
+var allowlist = ["*"]
 var corsOptionsDelegate = function (req, callback) {
   var corsOptions;
   if (allowlist.indexOf(req.header('Origin')) !== -1) {
