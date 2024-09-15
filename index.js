@@ -14,13 +14,17 @@ const port = 3000;
 
 app.use(express.json());
 
-app.use(
-  cors({
-    origin: ["https://qutanya-id.vercel.app", "https://be-qutanya.vercel.app"], // Allow your frontend origin
-    methods: ["GET", "POST","DELETE", "PUT", "PATCH"],
-    credentials: true,
-  })
-);
+const corsConfig = cors({
+  origin: (origin, callback) => {
+    if (!origin || whitelist.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+});
+
+app.use(cors(corsConfig));
 
 app.get("/", async (req, res) => {
   try {
