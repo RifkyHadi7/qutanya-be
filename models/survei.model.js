@@ -127,8 +127,9 @@ const survei = {
             order_id: parameter.transaction_details.order_id,
             id_form: share_id_form,
           },
-        ]).select();
-        console.log(data);
+        ])
+        .select();
+      console.log(data);
       if (error) {
         // return { status: "err", msg: error };
         throw new Error(error.message);
@@ -139,7 +140,6 @@ const survei = {
       const id_survei = data[0].id;
 
       console.log(id_survei);
-;
       for (const value of kategori) {
         const { data: kategori_survei, error: error_kategori } = await supabase
           .from("kategori_survei")
@@ -371,19 +371,19 @@ const survei = {
     }
   },
 
-  getDataAll: async ({ filter, page }) => {
+  getDataAll: async ({ filter }) => {
     try {
       if (!filter) {
-        const { data, error } = await getSurveiAll(filter, page);
-        
+        const { data, error } = await getSurveiAll(filter);
+
         return {
           status: "ok",
           data,
         };
       }
       const filterArray = filter.split(",").map(Number);
-      
-      const { data, error } = await getSurveiAll(filterArray, page);
+
+      const { data, error } = await getSurveiAll(filterArray);
 
       if (error) {
         throw new Error(error);
@@ -528,11 +528,12 @@ async function getSurveiAll(filter) {
     // Query dengan filter
     query = supabase
       .from("kategori_survei")
-      .select(`*, survei(*)`)
+      .select(`*, survei(*,user(nama))`)
+      .order('created_at', {ascending:false})
       .in("id_filter", filter);
   } else {
     // Query tanpa filter
-    query = supabase.from("survei").select(`*`);
+    query = supabase.from("survei").select(`*, user(id,nama)`);
   }
 
   const { data, error } = await query;
@@ -540,17 +541,12 @@ async function getSurveiAll(filter) {
   if (error) {
     throw new Error(`Error fetching survei: ${error.message}`);
   }
-
+  
   // Jika ada data, lakukan pengurutan berdasarkan survei.created_at setelah data diambil
-  if (data && filter) {
-    data.forEach((item) => {
-      item.survei = item.survei.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    });
-  }
+
 
   return { data, error };
 }
-
 
 async function getRiwayatSurvei(id, id_user) {
   const { data, error } = await supabase
