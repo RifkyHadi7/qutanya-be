@@ -44,7 +44,7 @@ const survei = {
 
       const oauth2Client = new google.auth.OAuth2(
         process.env.CLIENT_ID,
-        process.env.CLIENT_SECRET,
+        process.env.CLIENT_SECRET
       );
       // Mengautentikasi pengguna menggunakan OAuth 2.0
       oauth2Client.setCredentials({ access_token: accessToken });
@@ -356,9 +356,7 @@ const survei = {
 
       return {
         status: "ok",
-        data: {
-          data,
-        },
+        data,
       };
     } catch (error) {
       return { status: "err", msg: error.message };
