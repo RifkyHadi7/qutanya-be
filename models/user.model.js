@@ -120,8 +120,8 @@ const user = {
 		} 
 		return { status: "ok", msg: "success add user" };
 	},
-	updateUser: async (userId, data, file) => {
-		const { nama } = data;
+	updateUser: async (data, file) => {
+		const { id_user, nama } = data;
 		let updatedData = { nama };
 	
 		if (file && file.size > 0) {
@@ -147,14 +147,44 @@ const user = {
 			updatedData.foto_profil = publicUrl;
 		}
 	
-		const { error } = await supabase.from("user").update(updatedData).eq("id", userId);
+		const { error } = await supabase.from("user").update(updatedData).eq("id", id_user);
 	
 		if (error) {
 			return { status: "err", msg: error.message };
 		}
 	
 		return { status: "ok", msg: "User updated successfully" };
-	}	
+	},
+	updatePassword: async(data) => {
+		const {id_user, oldpassword, newpassword} = data;
+
+		const [{data: password, error: errGetPassword}] = await supabase
+			.from("user")
+			.select("password")
+			.eq("id", id_user)
+		
+		if(errorGetPassword){
+			return {status: "err", msg: errorGetPassword}
+		}
+		const isPasswordValid = await bcrypt.compare(password, oldpassword)
+		if(!isPasswordValid){
+			return{status: "err", msg: "invalid password"}
+		}
+		// Hash password baru
+		const hashedNewPassword = await bcrypt.hash(newpassword, 10);
+
+		// Update password di database
+		const { error: errorUpdatePassword } = await supabase
+			.from("user")
+			.update({ password: hashedNewPassword })
+			.eq("id", id_user);
+	
+		if (errorUpdatePassword) {
+			return { status: "err", msg: errorUpdatePassword.message };
+		}
+	
+		return { status: "success", msg: "Password updated successfully" };
+	}
 };
 
 module.exports = user;

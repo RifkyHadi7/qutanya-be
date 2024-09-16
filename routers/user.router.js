@@ -12,6 +12,7 @@ const upload = multer({
 router.post("/", upload.single("foto_profil"), controller.addUser);
 router.post("/login", controller.login);
 router.post("/update", controller.updateUser)
+router.post("/newpassword", controller.updatePassword)
 
 
 module.exports = router;
