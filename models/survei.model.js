@@ -14,6 +14,7 @@ const survei = {
     title,
     kategori,
     id_user_create,
+    accessToken,
   }) => {
     try {
       // const formID = "1sRDm9iHoH8dF-AKTExEfHTQ_R1vehIxombT77zQLg-0"; // Ganti dengan form ID Anda
@@ -41,51 +42,37 @@ const survei = {
         throw new Error("Title tidak boleh kosong.");
       }
 
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.CLIENT_ID,
+        process.env.CLIENT_SECRET,
+      );
       // Mengautentikasi pengguna menggunakan OAuth 2.0
-      const auth = await authenticate({
-        keyfilePath: path.join(__dirname, "../credentials.json"),
-        scopes: ["https://www.googleapis.com/auth/forms.body.readonly"],
-      });
+      oauth2Client.setCredentials({ access_token: accessToken });
 
-      // Buat instance Forms API dengan autentikasi yang sudah dilakukan
-      const forms = google.forms({ version: "v1", auth });
-
+      const forms = google.forms({ version: "v1", auth: oauth2Client });
       const id_form = form_meta_req.match(
         /https:\/\/docs\.google\.com\/forms\/d\/([^\/]+)\/edit/
       );
-
-      // id_share_link
       const share_id_form = form_res.match(
         /https:\/\/docs\.google\.com\/forms\/d\/e\/([^\/]+)\/viewform/
       )[1];
 
-      // Ambil metadata form
-      const formMeta = await forms.forms.get({
-        formId: id_form[1],
-      });
-
-      // Mendapatkan semua pertanyaan dari form
+      const formMeta = await forms.forms.get({ formId: id_form[1] });
       const items = formMeta.data.items;
-
-      // Iterasi melalui setiap item untuk menghitung jumlah tipe pertanyaan
       const totalQuestions = items
         .map((item) => item?.questionItem?.question)
         .filter((question) => question !== undefined).length;
 
       const hadiah = harga / totalQuestions;
 
-      // midtrans
-
-      let snap = new midtransClient.Snap({
+      const snap = new midtransClient.Snap({
         isProduction: false,
         serverKey: process.env.MIDTRANS_SERVER_KEY,
         clientKey: process.env.MIDTRANS_CLIENT_KEY,
       });
 
-      // get user
       const user = await getUserById(id_user_create);
-      console.log(user);
-      // Persiapkan parameter transaksi
+
       let parameter = {
         transaction_details: {
           order_id: "order-id-node-" + new Date().getTime(),
@@ -100,17 +87,10 @@ const survei = {
         },
       };
 
-      // Buat transaksi dan dapatkan link pembayaran
-      let midtransLink;
-      let transaction = await snap.createTransaction(parameter);
-      midtransLink = transaction.redirect_url;
-      if (!midtransLink || midtransLink == undefined) {
-        console.error("Midtrans Error:", e);
-        // return { status: "err", msg: e.message };
-        throw new Error(e.message);
-      }
-
-      console.log("aman");
+      const transaction = await snap.createTransaction(parameter);
+      const midtransLink = transaction.redirect_url;
+      if (!midtransLink)
+        throw new Error("Midtrans Error: Transaction link not created.");
 
       const { data, error } = await supabase
         .from("survei")
@@ -129,17 +109,11 @@ const survei = {
           },
         ])
         .select();
-      console.log(data);
-      if (error) {
-        // return { status: "err", msg: error };
-        throw new Error(error.message);
-      }
-      console.log("aman2");
-      console.log(data);
+
+      if (error) throw new Error(error.message);
 
       const id_survei = data[0].id;
 
-      console.log(id_survei);
       for (const value of kategori) {
         const { data: kategori_survei, error: error_kategori } = await supabase
           .from("kategori_survei")
@@ -149,15 +123,9 @@ const survei = {
               id_filter: value,
             },
           ]);
-        if (error_kategori) {
-          console.error(
-            "Error inserting into kategori_survei:",
-            error_kategori
-          );
-          throw new Error(error_kategori.message);
-        }
+
+        if (error_kategori) throw new Error(error_kategori.message);
       }
-      console.log("aman44");
 
       const { error_riwayat } = await supabase.from("riwayat_survei").insert([
         {
@@ -166,10 +134,7 @@ const survei = {
         },
       ]);
 
-      if (error_riwayat) {
-        // return { status: "err", msg: error_riwayat };
-        throw new Error(error_riwayat);
-      }
+      if (error_riwayat) throw new Error(error_riwayat);
 
       return {
         status: "ok",
@@ -529,7 +494,7 @@ async function getSurveiAll(filter) {
     query = supabase
       .from("kategori_survei")
       .select(`*, survei(*,user(nama))`)
-      .order('created_at', {ascending:false})
+      .order("created_at", { ascending: false })
       .in("id_filter", filter);
   } else {
     // Query tanpa filter
@@ -541,9 +506,8 @@ async function getSurveiAll(filter) {
   if (error) {
     throw new Error(`Error fetching survei: ${error.message}`);
   }
-  
-  // Jika ada data, lakukan pengurutan berdasarkan survei.created_at setelah data diambil
 
+  // Jika ada data, lakukan pengurutan berdasarkan survei.created_at setelah data diambil
 
   return { data, error };
 }
