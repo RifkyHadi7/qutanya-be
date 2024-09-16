@@ -17,8 +17,9 @@ const saldo = {
 
         const {data : dataTransaksi, error: errorTransaksi} = await supabase
             .from("riwayat_transaksi")
-            .select("nominal, pemasukan, keterangan")
+            .select("nominal, pemasukan, keterangan, created_at")
             .eq("id_user", id_user)
+            .order("created_at", { ascending: false })
         if(errorTransaksi){
             return {status: "err", msg: errorTransaksi}
         }

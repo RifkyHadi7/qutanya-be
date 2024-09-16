@@ -121,8 +121,8 @@ const user = {
 		return { status: "ok", msg: "success add user" };
 	},
 	updateUser: async (userId, data, file) => {
-		const { nama, biodata } = data;
-		let updatedData = { nama, biodata };
+		const { nama } = data;
+		let updatedData = { nama };
 	
 		if (file && file.size > 0) {
 			const pathname = `${nama}`;
