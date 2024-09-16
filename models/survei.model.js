@@ -5,6 +5,8 @@ const { authenticate } = require("@google-cloud/local-auth");
 const supabase = require("../constraint/database");
 const midtransClient = require("midtrans-client");
 const saldo = require("./saldo.model");
+const { response } = require("express");
+const kategori = require("./kategori.model");
 
 const survei = {
   create: async ({
@@ -129,7 +131,7 @@ const survei = {
 
       const { error_riwayat } = await supabase.from("riwayat_survei").insert([
         {
-          id_user: id_survei,
+          id_user: id_user_create,
           id_survei: id_survei,
         },
       ]);
@@ -141,7 +143,8 @@ const survei = {
         data: {
           hadiah,
           harga,
-          midtransLink,
+          midtrans_link: midtransLink,
+          total_question: totalQuestions,
         },
       };
     } catch (err) {
@@ -339,7 +342,7 @@ const survei = {
   getDataAll: async ({ filter }) => {
     try {
       if (!filter) {
-        const { data, error } = await getSurveiAll(filter);
+        const data = await getSurveiAll(filter);
 
         return {
           status: "ok",
@@ -348,11 +351,7 @@ const survei = {
       }
       const filterArray = filter.split(",").map(Number);
 
-      const { data, error } = await getSurveiAll(filterArray);
-
-      if (error) {
-        throw new Error(error);
-      }
+      const data = await getSurveiAll(filterArray);
 
       return {
         status: "ok",
@@ -373,9 +372,7 @@ const survei = {
 
       return {
         status: "ok",
-        data: {
-          data,
-        },
+        data,
       };
     } catch (error) {
       return { status: "err", msg: error.message };
@@ -392,9 +389,23 @@ const survei = {
 
       return {
         status: "ok",
-        data: {
-          data,
-        },
+        data,
+      };
+    } catch (error) {
+      return { status: "err", msg: error.message };
+    }
+  },
+  getRiwayatSurveiSaya: async ({ id_user }) => {
+    try {
+      const { data, error } = await getRiwayatSurveiMy(id_user);
+  
+      if (error) {
+        throw new Error(error);
+      }
+  
+      return {
+        status: "ok",
+        data,
       };
     } catch (error) {
       return { status: "err", msg: error.message };
@@ -402,20 +413,21 @@ const survei = {
   },
 };
 
-async function getUserById(userId) {
-  const { data: user, error } = await supabase
-    .from("user") // The name of your table in the database
-    .select("*")
-    .eq("id", userId)
-    .single();
 
-  if (error) {
-    console.error("Error fetching user:", error);
-    return null;
-  }
+  async function getUserById(userId) {
+    const { data: user, error } = await supabase
+      .from("user") // The name of your table in the database
+      .select("*")
+      .eq("id", userId)
+      .single();
 
-  return { user, error };
-}
+    if (error) {
+      console.error("Error fetching user:", error);
+      return null;
+    }
+
+    return { user, error };
+  };
 
 async function getSurveiById(Id) {
   const { data: survei, error } = await supabase
@@ -488,40 +500,78 @@ async function getSurveiAll(filter) {
   let query;
 
   if (filter) {
-    // Query dengan filter
-    query = supabase
+    // Query with filter
+    const { data: res, error } = await supabase
       .from("kategori_survei")
-      .select(`*, survei(*,user(nama))`)
+      .select(`*, survei(*, user(nama)), kategori_filter(kategori)`)
       .order("created_at", { ascending: false })
       .in("id_filter", filter);
+
+    console.log(res);
+    if (error) {
+      throw new Error(`Error fetching survei with filter: ${error.message}`);
+    }
+
+    if (res && res.length > 0) {
+      query = res.map((item) => ({
+        id_survei: item.id_survei,
+        created_at: item.created_at,
+        judul: item.survei.judul,
+        saldo: item.survei.saldo,
+        hadiah: item.survei.hadiah,
+        user: item.survei.user,
+        kategori: item.kategori_filter.kategori,
+        link_form: item.survei.link_form,
+        link_meta: item.survei.link_meta,
+        status_payment: item.survei.status_payment,
+      }));
+    } else {
+      query = [];
+    }
   } else {
-    // Query tanpa filter
-    query = supabase.from("survei").select(`*, user(id,nama)`);
+    // Query without filter
+    const { data, error } = await supabase
+      .from("survei")
+      .select(`*, user(id, nama), kategori_survei(*,kategori_filter(*))`)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw new Error(`Error fetching survei: ${error.message}`);
+    }
+
+    query = data;
   }
 
-  const { data, error } = await query;
-
-  if (error) {
-    throw new Error(`Error fetching survei: ${error.message}`);
-  }
-
-  // Jika ada data, lakukan pengurutan berdasarkan survei.created_at setelah data diambil
-
-  return { data, error };
+  return query;
 }
 
-async function getRiwayatSurvei(id, id_user) {
+async function getRiwayatSurvei(id_user) {
   const { data, error } = await supabase
     .from("riwayat_survei")
     .select(`*, survei(*)`)
-    .in("id_user", id_user);
-
+    .eq("id_user", id_user)
+    .order('created_at', {ascending:false});
   if (error) {
-    console.error("Error fetching survei with filter:", error);
+    console.error("Error fetching survei with ", error);
     return null;
   }
 
   return { data, error };
+}
+
+async function getRiwayatSurveiMy(id_user) {
+  const { data, error } = await supabase
+    .from("survei")
+    .select(`*`)
+    .eq("id_pembuat", id_user)
+    .order('created_at', {ascending:false});
+    
+  if (error) {
+    console.error("Error fetching survei:", error);
+    return null;
+  }
+
+  return {data, error}; // Only return data, no need to return { data, error }
 }
 
 module.exports = survei;

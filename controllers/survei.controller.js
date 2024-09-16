@@ -69,6 +69,16 @@ const survei = {
       }
     });
   },
+  getRiwayatSurveiSaya: async (req, res) => {
+    model.getRiwayatSurveiSaya(req.body).then((result) => {
+      if (result.status == "ok") {
+        success(res, result.data);
+      } else {
+        error(res, result.msg);
+      }
+    });
+  },
+
 };
 
 module.exports = survei;
