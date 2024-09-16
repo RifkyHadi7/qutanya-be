@@ -285,10 +285,10 @@ const survei = {
       let { data: transactionSurvei, error } = await getSurveiByOrderiD(
         orderId
       );
-
+      console.log(transactionSurvei);
       if (error || !transactionSurvei) {
-        return res.status(404).json({ message: "Survey not found." });
-        n;
+        return { status: "err", msg: error };
+        // return res.status(404).json({ message: "Survey not found." });
       }
 
       let newStatus = transactionSurvei.status_payment;
@@ -420,7 +420,7 @@ const survei = {
 
 
   async function getUserById(userId) {
-    const { data: user, error } = await supabase
+    const { data, error } = await supabase
       .from("user") // The name of your table in the database
       .select("*")
       .eq("id", userId)
@@ -431,11 +431,11 @@ const survei = {
       return null;
     }
 
-    return { user, error };
+    return { data, error };
   };
 
 async function getSurveiById(Id) {
-  const { data: survei, error } = await supabase
+  const {  data, error } = await supabase
     .from("survei")
     .select("*")
     .eq("id", Id)
@@ -446,22 +446,22 @@ async function getSurveiById(Id) {
     return null;
   }
 
-  return { survei, error };
+  return { data, error };
 }
 
 async function getSurveiByOrderiD(orderId) {
-  const { data: survei, error } = await supabase
+  console.log(orderId);
+  const { data, error } = await supabase
     .from("survei")
     .select("*")
     .eq("order_id", orderId)
     .single();
-
+    
   if (error) {
     console.error("Error fetching survei:", error);
-    return null;
   }
 
-  return { survei, error };
+  return { data, error };
 }
 
 async function updateSurveiStatus(surveiId, status_payment, status_survei) {
@@ -487,7 +487,7 @@ async function getKategoriData(kategoriIds) {
 }
 
 async function getSurveiByForm(formData) {
-  const { data: survei, error } = await supabase
+  const { data, error } = await supabase
     .from("survei")
     .select("*")
     .eq("id_form", formData)
@@ -498,7 +498,7 @@ async function getSurveiByForm(formData) {
     return null;
   }
 
-  return { survei, error };
+  return { data, error };
 }
 
 async function getSurveiAll(filter) {
