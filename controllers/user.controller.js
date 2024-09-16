@@ -21,7 +21,16 @@ const user = {
     })
   },
   updateUser: async (req, res) => {
-    model.updateUser(req.body).then((result) => {
+    model.updateUser(req.body, req.file).then((result) => {
+        if (result.status == "ok") {
+            success(res, result.msg);
+          } else {
+            error(res, result.msg);
+          }
+    })
+  },
+  updatePassword: async (req, res) => {
+    model.updatePassword(req.body).then((result) => {
         if (result.status == "ok") {
             success(res, result.msg);
           } else {

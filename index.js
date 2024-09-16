@@ -9,7 +9,6 @@ const saldoRouter = require("./routers/saldo.router");
 const kategoriRouter = require("./routers/kategori.router");
 const googleAuth = require("./routers/auth.router");
 const app = express();
-const url = require("url");
 const port = 3000;
 
 app.use(express.json());
@@ -39,8 +38,8 @@ app.get("/", async (req, res) => {
 app.use("/user", usersRouter);
 app.use("/survei", surveiRouter);
 
-app.use("/kategori", kategoriRouter);
 app.use("/artikel", artikelRouter);
+app.use("/kategori", kategoriRouter);
 app.use("/saldo", saldoRouter);
 app.use("/auth", googleAuth);
 app.use("*", (_req, res) => res.status(404).json({ error: "Not Found" }));

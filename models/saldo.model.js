@@ -2,32 +2,24 @@ const supabase = require("../constraint/database")
 
 const saldo = {
     getSaldo: async(data) => {
-        const email = data
+        const id_user = data.id_user
         const {data: saldo, error} = await supabase
             .from("user")
             .select("saldo")
-            .eq("email", email)
+            .eq("id", id_user)
         if (error) {
             return { status: "err", msg: error.message };
         }
-    
         return { status: "ok", data: saldo };
     },
     getRiwayatTransaksi: async(data) => {
-        const email = data
-        const {data : id_user, error: errorId }= await supabase
-			.from("user")
-			.select("id")
-			.eq("email", email)
-		if(errorId){
-			return {status: "err", msg: errorId}
-		}
-		const iduser = id_user[0].id
+        const id_user = data.id_user
 
         const {data : dataTransaksi, error: errorTransaksi} = await supabase
             .from("riwayat_transaksi")
-            .select("nominal, pemasukan, keterangan")
-            .eq("id_user", iduser)
+            .select("nominal, pemasukan, keterangan, created_at")
+            .eq("id_user", id_user)
+            .order("created_at", { ascending: false })
         if(errorTransaksi){
             return {status: "err", msg: errorTransaksi}
         }
@@ -35,18 +27,17 @@ const saldo = {
         return { status: "ok", data: dataTransaksi };
     },
     addTransaksi: async(data) => {
-        const {email, nominal, pemasukan, keterangan} = data;
+        const {id_user, nominal, pemasukan, keterangan} = data;
         
         // Fetch user ID
-        const {data: id_user, error: errorId} = await supabase
+        const {data: saldo, error: errorSaldo} = await supabase
             .from("user")
-            .select("id, saldo")
-            .eq("email", email);
-        if (errorId) {
-            return {status: "err", msg: errorId};
+            .select("saldo")
+            .eq("id", id_user);
+        if (errorSaldo) {
+            return {status: "err", msg: errorSaldo};
         }
-        const iduser = id_user[0].id;
-        let currentSaldo = id_user[0].saldo;
+        let currentSaldo = saldo.data[0].saldo;
 
         // Adjust saldo based on pemasukan
         if (pemasukan) {
