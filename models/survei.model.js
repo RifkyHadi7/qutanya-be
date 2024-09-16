@@ -255,14 +255,19 @@ const survei = {
     }
   },
 
-  callbackPayment: async ({ notification }) => {
+  callbackPayment: async ( notification ) => {
+    console.log(notification);
+
+    if (!notification || typeof notification !== 'object') {
+      return { status: "err", msg: "Invalid notification format." };
+    }
     try {
       let coreApi = new midtransClient.CoreApi({
         isProduction: false,
         serverKey: process.env.MIDTRANS_SERVER_KEY,
         clientKey: process.env.MIDTRANS_CLIENT_KEY,
       });
-
+      
       // Get the transaction status from Midtrans
       const statusResponse = await coreApi.transaction.notification(
         notification
