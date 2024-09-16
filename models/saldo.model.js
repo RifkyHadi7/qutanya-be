@@ -2,7 +2,7 @@ const supabase = require("../constraint/database")
 
 const saldo = {
     getSaldo: async(data) => {
-        const email = data
+        const email = data.email
         const {data: saldo, error} = await supabase
             .from("user")
             .select("saldo")
@@ -10,11 +10,10 @@ const saldo = {
         if (error) {
             return { status: "err", msg: error.message };
         }
-    
         return { status: "ok", data: saldo };
     },
     getRiwayatTransaksi: async(data) => {
-        const email = data
+        const email = data.email
         const {data : id_user, error: errorId }= await supabase
 			.from("user")
 			.select("id")

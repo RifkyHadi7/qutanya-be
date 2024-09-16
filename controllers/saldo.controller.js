@@ -12,7 +12,7 @@ const saldo = {
     });
   },
   getRiwayatTransaksi: async (req, res) => {
-    model.getRiwayatTransaksiTransaksi(req.body).then((result) => {
+    model.getRiwayatTransaksi(req.body).then((result) => {
       if (result.status == "ok") {
         success(res, result.data);
       } else {
