@@ -18,7 +18,7 @@ const getAuthorizationUrl = () => {
 const getAccessTokenFromCode = async (code) => {
     const { tokens } = await oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
-    return tokens;
+    return tokens.access_token;
 };
 
 module.exports = { oauth2Client, getAuthorizationUrl, getAccessTokenFromCode };
