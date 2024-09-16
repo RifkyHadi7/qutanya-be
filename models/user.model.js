@@ -158,15 +158,17 @@ const user = {
 	updatePassword: async(data) => {
 		const {id_user, oldpassword, newpassword} = data;
 
-		const [{data: password, error: errGetPassword}] = await supabase
+		const {data: password, error: errGetPassword} = await supabase
 			.from("user")
 			.select("password")
 			.eq("id", id_user)
 		
-		if(errorGetPassword){
-			return {status: "err", msg: errorGetPassword}
+		if(errGetPassword){
+			return {status: "err", msg: errGetPassword}
 		}
-		const isPasswordValid = await bcrypt.compare(password, oldpassword)
+
+		const isPasswordValid = await bcrypt.compare(oldpassword.toString(), password[0].password);
+
 		if(!isPasswordValid){
 			return{status: "err", msg: "invalid password"}
 		}
@@ -182,8 +184,8 @@ const user = {
 		if (errorUpdatePassword) {
 			return { status: "err", msg: errorUpdatePassword.message };
 		}
-	
-		return { status: "success", msg: "Password updated successfully" };
+
+		return { status: "ok", msg: "Password updated successfully" };
 	}
 };
 

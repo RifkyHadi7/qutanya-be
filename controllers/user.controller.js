@@ -32,7 +32,7 @@ const user = {
   updatePassword: async (req, res) => {
     model.updatePassword(req.body).then((result) => {
         if (result.status == "ok") {
-            success(res, result.data);
+            success(res, result.msg);
           } else {
             error(res, result.msg);
           }
