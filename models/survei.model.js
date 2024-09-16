@@ -269,7 +269,7 @@ const survei = {
       let keterangan = "Add reward survei " + dataForm.judul;
 
       const transaksiData = await saldo.addTransaksi(
-        user.email,
+        id_user_create,
         dataForm.hadiah,
         true,
         keterangan
