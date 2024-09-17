@@ -7,16 +7,13 @@ const surveiRouter = require("./routers/survei.router");
 const artikelRouter = require("./routers/artikel.router");
 const saldoRouter = require("./routers/saldo.router");
 const kategoriRouter = require("./routers/kategori.router");
+const googleAuth = require("./routers/auth.router");
 const app = express();
 const port = 3000;
 
 app.use(express.json());
 
-app.use(
-  cors({
-    origin: "*",
-  })
-);
+app.use(cors("*"));
 
 app.get("/", async (req, res) => {
   try {
@@ -44,6 +41,7 @@ app.use("/survei", surveiRouter);
 app.use("/artikel", artikelRouter);
 app.use("/kategori", kategoriRouter);
 app.use("/saldo", saldoRouter);
+app.use("/auth", googleAuth);
 app.use("*", (_req, res) => res.status(404).json({ error: "Not Found" }));
 
 app.listen(port, () => {

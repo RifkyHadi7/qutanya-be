@@ -5,6 +5,8 @@ const { authenticate } = require("@google-cloud/local-auth");
 const supabase = require("../constraint/database");
 const midtransClient = require("midtrans-client");
 const saldo = require("./saldo.model");
+const { response } = require("express");
+const kategori = require("./kategori.model");
 
 const survei = {
   create: async ({
@@ -14,6 +16,7 @@ const survei = {
     title,
     kategori,
     id_user_create,
+    accessToken,
   }) => {
     try {
       // const formID = "1sRDm9iHoH8dF-AKTExEfHTQ_R1vehIxombT77zQLg-0"; // Ganti dengan form ID Anda
@@ -41,51 +44,37 @@ const survei = {
         throw new Error("Title tidak boleh kosong.");
       }
 
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.CLIENT_ID,
+        process.env.CLIENT_SECRET
+      );
       // Mengautentikasi pengguna menggunakan OAuth 2.0
-      const auth = await authenticate({
-        keyfilePath: path.join(__dirname, "../credentials.json"),
-        scopes: ["https://www.googleapis.com/auth/forms.body.readonly"],
-      });
+      oauth2Client.setCredentials({ access_token: accessToken });
 
-      // Buat instance Forms API dengan autentikasi yang sudah dilakukan
-      const forms = google.forms({ version: "v1", auth });
-
+      const forms = google.forms({ version: "v1", auth: oauth2Client });
       const id_form = form_meta_req.match(
         /https:\/\/docs\.google\.com\/forms\/d\/([^\/]+)\/edit/
       );
-
-      // id_share_link
       const share_id_form = form_res.match(
         /https:\/\/docs\.google\.com\/forms\/d\/e\/([^\/]+)\/viewform/
       )[1];
 
-      // Ambil metadata form
-      const formMeta = await forms.forms.get({
-        formId: id_form[1],
-      });
-
-      // Mendapatkan semua pertanyaan dari form
+      const formMeta = await forms.forms.get({ formId: id_form[1] });
       const items = formMeta.data.items;
-
-      // Iterasi melalui setiap item untuk menghitung jumlah tipe pertanyaan
       const totalQuestions = items
         .map((item) => item?.questionItem?.question)
         .filter((question) => question !== undefined).length;
 
       const hadiah = harga / totalQuestions;
 
-      // midtrans
-
-      let snap = new midtransClient.Snap({
+      const snap = new midtransClient.Snap({
         isProduction: false,
         serverKey: process.env.MIDTRANS_SERVER_KEY,
         clientKey: process.env.MIDTRANS_CLIENT_KEY,
       });
 
-      // get user
       const user = await getUserById(id_user_create);
-      console.log(user);
-      // Persiapkan parameter transaksi
+
       let parameter = {
         transaction_details: {
           order_id: "order-id-node-" + new Date().getTime(),
@@ -100,17 +89,10 @@ const survei = {
         },
       };
 
-      // Buat transaksi dan dapatkan link pembayaran
-      let midtransLink;
-      let transaction = await snap.createTransaction(parameter);
-      midtransLink = transaction.redirect_url;
-      if (!midtransLink || midtransLink == undefined) {
-        console.error("Midtrans Error:", e);
-        // return { status: "err", msg: e.message };
-        throw new Error(e.message);
-      }
-
-      console.log("aman");
+      const transaction = await snap.createTransaction(parameter);
+      const midtransLink = transaction.redirect_url;
+      if (!midtransLink)
+        throw new Error("Midtrans Error: Transaction link not created.");
 
       const { data, error } = await supabase
         .from("survei")
@@ -129,17 +111,11 @@ const survei = {
           },
         ])
         .select();
-      console.log(data);
-      if (error) {
-        // return { status: "err", msg: error };
-        throw new Error(error.message);
-      }
-      console.log("aman2");
-      console.log(data);
+
+      if (error) throw new Error(error.message);
 
       const id_survei = data[0].id;
 
-      console.log(id_survei);
       for (const value of kategori) {
         const { data: kategori_survei, error: error_kategori } = await supabase
           .from("kategori_survei")
@@ -149,34 +125,26 @@ const survei = {
               id_filter: value,
             },
           ]);
-        if (error_kategori) {
-          console.error(
-            "Error inserting into kategori_survei:",
-            error_kategori
-          );
-          throw new Error(error_kategori.message);
-        }
+
+        if (error_kategori) throw new Error(error_kategori.message);
       }
-      console.log("aman44");
 
       const { error_riwayat } = await supabase.from("riwayat_survei").insert([
         {
-          id_user: id_survei,
+          id_user: id_user_create,
           id_survei: id_survei,
         },
       ]);
 
-      if (error_riwayat) {
-        // return { status: "err", msg: error_riwayat };
-        throw new Error(error_riwayat);
-      }
+      if (error_riwayat) throw new Error(error_riwayat);
 
       return {
         status: "ok",
         data: {
           hadiah,
           harga,
-          midtransLink,
+          midtrans_link: midtransLink,
+          total_question: totalQuestions,
         },
       };
     } catch (err) {
@@ -247,7 +215,18 @@ const survei = {
         );
       }
 
-      const user = await getUserById(id_user_create);
+      
+      const {user, error_get_user }= await getUserById(id_user_create);
+
+      if (error_get_user) {
+        throw new error_get_user;
+      }
+       
+      const isClaimed = checkClaimExists(user.email, id_form[1])
+
+      if (isClaimed){
+        throw new Error("Sorry you have claimed")
+      }
 
       const { error_claim } = await supabase.from("claim").insert([
         {
@@ -263,7 +242,7 @@ const survei = {
       ]);
 
       if (error_claim) {
-        throw new Error("Sorry you have claimed");
+        throw new error_claim;
       }
 
       let keterangan = "Add reward survei " + dataForm.judul;
@@ -277,17 +256,19 @@ const survei = {
 
       return {
         status: "ok",
-        data: {
-          updateSaldo,
-          message: transaksiData,
-        },
+        saldo : updateSaldo,
+        message: transaksiData.msg,
       };
     } catch (error) {
       return { status: "err", msg: error.message };
     }
   },
 
-  callbackPayment: async ({ notification }) => {
+  callbackPayment: async (notification) => {
+
+    if (!notification || typeof notification !== "object") {
+      return { status: "err", msg: "Invalid notification format." };
+    }
     try {
       let coreApi = new midtransClient.CoreApi({
         isProduction: false,
@@ -312,10 +293,10 @@ const survei = {
       let { data: transactionSurvei, error } = await getSurveiByOrderiD(
         orderId
       );
-
+      console.log(transactionSurvei);
       if (error || !transactionSurvei) {
-        return res.status(404).json({ message: "Survey not found." });
-        n;
+        return { status: "err", msg: error };
+        // return res.status(404).json({ message: "Survey not found." });
       }
 
       let newStatus = transactionSurvei.status_payment;
@@ -374,7 +355,7 @@ const survei = {
   getDataAll: async ({ filter }) => {
     try {
       if (!filter) {
-        const { data, error } = await getSurveiAll(filter);
+        const data = await getSurveiAll(filter);
 
         return {
           status: "ok",
@@ -383,17 +364,11 @@ const survei = {
       }
       const filterArray = filter.split(",").map(Number);
 
-      const { data, error } = await getSurveiAll(filterArray);
-
-      if (error) {
-        throw new Error(error);
-      }
+      const data = await getSurveiAll(filterArray);
 
       return {
         status: "ok",
-        data: {
-          data,
-        },
+        data,
       };
     } catch (error) {
       return { status: "err", msg: error.message };
@@ -410,9 +385,7 @@ const survei = {
 
       return {
         status: "ok",
-        data: {
-          data,
-        },
+        data,
       };
     } catch (error) {
       return { status: "err", msg: error.message };
@@ -429,9 +402,23 @@ const survei = {
 
       return {
         status: "ok",
-        data: {
-          data,
-        },
+        data,
+      };
+    } catch (error) {
+      return { status: "err", msg: error.message };
+    }
+  },
+  getRiwayatSurveiSaya: async ({ id_user }) => {
+    try {
+      const { data, error } = await getRiwayatSurveiMy(id_user);
+
+      if (error) {
+        throw new Error(error);
+      }
+
+      return {
+        status: "ok",
+        data,
       };
     } catch (error) {
       return { status: "err", msg: error.message };
@@ -440,7 +427,7 @@ const survei = {
 };
 
 async function getUserById(userId) {
-  const { data: user, error } = await supabase
+  const { data, error } = await supabase
     .from("user") // The name of your table in the database
     .select("*")
     .eq("id", userId)
@@ -451,11 +438,11 @@ async function getUserById(userId) {
     return null;
   }
 
-  return { user, error };
+  return { data, error };
 }
 
 async function getSurveiById(Id) {
-  const { data: survei, error } = await supabase
+  const { data, error } = await supabase
     .from("survei")
     .select("*")
     .eq("id", Id)
@@ -466,11 +453,12 @@ async function getSurveiById(Id) {
     return null;
   }
 
-  return { survei, error };
+  return { data, error };
 }
 
 async function getSurveiByOrderiD(orderId) {
-  const { data: survei, error } = await supabase
+  console.log(orderId);
+  const { data, error } = await supabase
     .from("survei")
     .select("*")
     .eq("order_id", orderId)
@@ -478,10 +466,9 @@ async function getSurveiByOrderiD(orderId) {
 
   if (error) {
     console.error("Error fetching survei:", error);
-    return null;
   }
 
-  return { survei, error };
+  return { data, error };
 }
 
 async function updateSurveiStatus(surveiId, status_payment, status_survei) {
@@ -507,7 +494,7 @@ async function getKategoriData(kategoriIds) {
 }
 
 async function getSurveiByForm(formData) {
-  const { data: survei, error } = await supabase
+  const { data, error } = await supabase
     .from("survei")
     .select("*")
     .eq("id_form", formData)
@@ -518,48 +505,107 @@ async function getSurveiByForm(formData) {
     return null;
   }
 
-  return { survei, error };
+  return { data, error };
 }
 
 async function getSurveiAll(filter) {
   let query;
 
   if (filter) {
-    // Query dengan filter
-    query = supabase
+    // Query with filter
+    const { data: res, error } = await supabase
       .from("kategori_survei")
-      .select(`*, survei(*,user(nama))`)
-      .order('created_at', {ascending:false})
+      .select(`*, survei(*, user(nama)), kategori_filter(kategori)`)
+      .order("created_at", { ascending: false })
       .in("id_filter", filter);
+
+    console.log(res);
+    if (error) {
+      throw new Error(`Error fetching survei with filter: ${error.message}`);
+    }
+
+    if (res && res.length > 0) {
+      query = res.map((item) => ({
+        id_survei: item.id_survei,
+        created_at: item.created_at,
+        judul: item.survei.judul,
+        saldo: item.survei.saldo,
+        hadiah: item.survei.hadiah,
+        user: item.survei.user,
+        kategori: item.kategori_filter.kategori,
+        link_form: item.survei.link_form,
+        link_meta: item.survei.link_meta,
+        status_payment: item.survei.status_payment,
+      }));
+    } else {
+      query = [];
+    }
   } else {
-    // Query tanpa filter
-    query = supabase.from("survei").select(`*, user(id,nama)`);
+    // Query without filter
+    const { data, error } = await supabase
+      .from("survei")
+      .select(`*, user(id, nama), kategori_survei(*,kategori_filter(*))`)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw new Error(`Error fetching survei: ${error.message}`);
+    }
+
+    query = data;
   }
 
-  const { data, error } = await query;
-
-  if (error) {
-    throw new Error(`Error fetching survei: ${error.message}`);
-  }
-  
-  // Jika ada data, lakukan pengurutan berdasarkan survei.created_at setelah data diambil
-
-
-  return { data, error };
+  return query;
 }
 
-async function getRiwayatSurvei(id, id_user) {
+async function getRiwayatSurvei(id_user) {
   const { data, error } = await supabase
     .from("riwayat_survei")
     .select(`*, survei(*)`)
-    .in("id_user", id_user);
-
+    .eq("id_user", id_user)
+    .order("created_at", { ascending: false });
   if (error) {
-    console.error("Error fetching survei with filter:", error);
+    console.error("Error fetching survei with ", error);
     return null;
   }
 
   return { data, error };
+}
+
+async function getRiwayatSurveiMy(id_user) {
+  const { data, error } = await supabase
+    .from("survei")
+    .select(`*`)
+    .eq("id_pembuat", id_user)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching survei:", error);
+    return null;
+  }
+
+  return { data, error }; // Only return data, no need to return { data, error }
+}
+
+async function checkClaimExists(email, id_form) {
+  const { data, error } = await supabase
+    .from('claim')  // Replace 'users' with your table name
+    .select('*')    // Select all fields (or specific ones if needed)
+    .eq('email', email)  // Check for email equality
+    .eq('id_form', id_form);       // Check for id equality
+
+  if (error) {
+    console.error("Error fetching user:", error);
+    return false;  // Handle error appropriately
+  }
+
+  // Check if any rows are returned
+  if (data && data.length > 0) {
+    console.log("User exists:", data);
+    return true;
+  } else {
+    console.log("User does not exist.");
+    return false;
+  }
 }
 
 module.exports = survei;
