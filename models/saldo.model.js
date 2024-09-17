@@ -37,7 +37,7 @@ const saldo = {
         if (errorSaldo) {
             return {status: "err", msg: errorSaldo};
         }
-        let currentSaldo = saldo.saldo;
+        let currentSaldo = saldo[0].saldo;
 
         // Adjust saldo based on pemasukan
         if (pemasukan) {
