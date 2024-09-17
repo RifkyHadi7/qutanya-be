@@ -10,5 +10,6 @@ router.post("/get-all", controller.getDataAll);
 router.post("/get-riwayat", controller.getRiwayatSurvei);
 router.post("/get-riwayat-my", controller.getRiwayatSurveiSaya);
 router.post("/survei-data", controller.getDataById);
+router.post("/claim-reward", controller.claimReward);
 
 module.exports = router;
