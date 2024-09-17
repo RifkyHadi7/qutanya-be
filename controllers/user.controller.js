@@ -23,7 +23,7 @@ const user = {
   updateUser: async (req, res) => {
     model.updateUser(req.body, req.file).then((result) => {
         if (result.status == "ok") {
-            success(res, result.msg);
+            success(res, result.data);
           } else {
             error(res, result.msg);
           }

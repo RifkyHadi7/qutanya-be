@@ -1,5 +1,6 @@
 const supabase = require("../constraint/database");
 const bcrypt = require('bcryptjs');
+const { error } = require("../constraint/response");
 
 const user = {
 	login: async ({ email, password }) => {
@@ -126,7 +127,16 @@ const user = {
 	
 		if (file && file.size > 0) {
 			const pathname = `${nama}`;
-	
+			
+			const {error, cekUrl} = supabase.storage.from("foto_profile").getPublicUrl(pathname)
+
+			if(!error){
+				const {error: errDelete} = await supabase.storage.from("foto_profile").remove(pathname)
+
+				if(errDelete){
+					return {status: "err", msg: errDelete}
+				}
+			}
 			const [
 				{ error: errUpload },
 				{
@@ -152,8 +162,17 @@ const user = {
 		if (error) {
 			return { status: "err", msg: error.message };
 		}
-	
-		return { status: "ok", msg: "User updated successfully" };
+		
+		const {error: errNewData, data: newData} = await supabase
+			.from("user")
+			.select("nama, foto_profil")
+			.eq("id", id_user)
+
+		if (errNewData){
+			return {status: "err", msg: errNewData}
+		}
+
+		return { status: "ok", data: newData };
 	},
 	updatePassword: async(data) => {
 		const {id_user, oldpassword, newpassword} = data;
@@ -184,8 +203,7 @@ const user = {
 		if (errorUpdatePassword) {
 			return { status: "err", msg: errorUpdatePassword.message };
 		}
-
-		return { status: "ok", msg: "Password updated successfully" };
+		return { status: "ok", msg: "Password updated successfully"};
 	}
 };
 
