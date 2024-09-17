@@ -215,7 +215,18 @@ const survei = {
         );
       }
 
-      const user = await getUserById(id_user_create);
+      
+      const {user, error_get_user }= await getUserById(id_user_create);
+
+      if (error_get_user) {
+        throw new error_get_user;
+      }
+       
+      const isClaimed = checkClaimExists(user.email, id_form[1])
+
+      if (isClaimed){
+        throw new Error("Sorry you have claimed")
+      }
 
       const { error_claim } = await supabase.from("claim").insert([
         {
@@ -231,7 +242,7 @@ const survei = {
       ]);
 
       if (error_claim) {
-        throw new Error("Sorry you have claimed");
+        throw new error_claim;
       }
 
       let keterangan = "Add reward survei " + dataForm.judul;
@@ -245,20 +256,17 @@ const survei = {
 
       return {
         status: "ok",
-        data: {
-          updateSaldo,
-          message: transaksiData,
-        },
+        saldo : updateSaldo,
+        message: transaksiData.msg,
       };
     } catch (error) {
       return { status: "err", msg: error.message };
     }
   },
 
-  callbackPayment: async ( notification ) => {
-    console.log(notification);
+  callbackPayment: async (notification) => {
 
-    if (!notification || typeof notification !== 'object') {
+    if (!notification || typeof notification !== "object") {
       return { status: "err", msg: "Invalid notification format." };
     }
     try {
@@ -267,7 +275,7 @@ const survei = {
         serverKey: process.env.MIDTRANS_SERVER_KEY,
         clientKey: process.env.MIDTRANS_CLIENT_KEY,
       });
-      
+
       // Get the transaction status from Midtrans
       const statusResponse = await coreApi.transaction.notification(
         notification
@@ -403,11 +411,11 @@ const survei = {
   getRiwayatSurveiSaya: async ({ id_user }) => {
     try {
       const { data, error } = await getRiwayatSurveiMy(id_user);
-  
+
       if (error) {
         throw new Error(error);
       }
-  
+
       return {
         status: "ok",
         data,
@@ -418,24 +426,23 @@ const survei = {
   },
 };
 
+async function getUserById(userId) {
+  const { data, error } = await supabase
+    .from("user") // The name of your table in the database
+    .select("*")
+    .eq("id", userId)
+    .single();
 
-  async function getUserById(userId) {
-    const { data, error } = await supabase
-      .from("user") // The name of your table in the database
-      .select("*")
-      .eq("id", userId)
-      .single();
+  if (error) {
+    console.error("Error fetching user:", error);
+    return null;
+  }
 
-    if (error) {
-      console.error("Error fetching user:", error);
-      return null;
-    }
-
-    return { data, error };
-  };
+  return { data, error };
+}
 
 async function getSurveiById(Id) {
-  const {  data, error } = await supabase
+  const { data, error } = await supabase
     .from("survei")
     .select("*")
     .eq("id", Id)
@@ -456,7 +463,7 @@ async function getSurveiByOrderiD(orderId) {
     .select("*")
     .eq("order_id", orderId)
     .single();
-    
+
   if (error) {
     console.error("Error fetching survei:", error);
   }
@@ -555,7 +562,7 @@ async function getRiwayatSurvei(id_user) {
     .from("riwayat_survei")
     .select(`*, survei(*)`)
     .eq("id_user", id_user)
-    .order('created_at', {ascending:false});
+    .order("created_at", { ascending: false });
   if (error) {
     console.error("Error fetching survei with ", error);
     return null;
@@ -569,14 +576,36 @@ async function getRiwayatSurveiMy(id_user) {
     .from("survei")
     .select(`*`)
     .eq("id_pembuat", id_user)
-    .order('created_at', {ascending:false});
-    
+    .order("created_at", { ascending: false });
+
   if (error) {
     console.error("Error fetching survei:", error);
     return null;
   }
 
-  return {data, error}; // Only return data, no need to return { data, error }
+  return { data, error }; // Only return data, no need to return { data, error }
+}
+
+async function checkClaimExists(email, id_form) {
+  const { data, error } = await supabase
+    .from('claim')  // Replace 'users' with your table name
+    .select('*')    // Select all fields (or specific ones if needed)
+    .eq('email', email)  // Check for email equality
+    .eq('id_form', id_form);       // Check for id equality
+
+  if (error) {
+    console.error("Error fetching user:", error);
+    return false;  // Handle error appropriately
+  }
+
+  // Check if any rows are returned
+  if (data && data.length > 0) {
+    console.log("User exists:", data);
+    return true;
+  } else {
+    console.log("User does not exist.");
+    return false;
+  }
 }
 
 module.exports = survei;
