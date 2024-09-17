@@ -37,7 +37,7 @@ const saldo = {
         if (errorSaldo) {
             return {status: "err", msg: errorSaldo};
         }
-        let currentSaldo = saldo.data[0].saldo;
+        let currentSaldo = saldo.saldo;
 
         // Adjust saldo based on pemasukan
         if (pemasukan) {
@@ -48,9 +48,9 @@ const saldo = {
 
         // Update saldo in biodata
         const {error: errorUpdateSaldo} = await supabase
-            .from("biodata")
+            .from("user")
             .update({saldo: currentSaldo})
-            .eq("id_user", iduser);
+            .eq("id", id_user);
         if (errorUpdateSaldo) {
             return {status: "err", msg: errorUpdateSaldo};
         }
@@ -58,7 +58,7 @@ const saldo = {
         // Insert transaction into riwayat_transaksi
         const {error: errorInsertTransaksi} = await supabase
             .from("riwayat_transaksi")
-            .insert([{id_user: iduser, nominal: nominal, pemasukan: pemasukan, keterangan: keterangan}]);
+            .insert([{id_user: id_user, nominal: nominal, pemasukan: pemasukan, keterangan: keterangan}]);
         if (errorInsertTransaksi) {
             return {status: "err", msg: errorInsertTransaksi};
         }
