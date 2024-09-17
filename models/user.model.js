@@ -192,7 +192,7 @@ const user = {
 			return{status: "err", msg: "invalid password"}
 		}
 		// Hash password baru
-		const hashedNewPassword = await bcrypt.hash(newpassword, 10);
+		const hashedNewPassword = await bcrypt.hash(newpassword, 12);
 
 		// Update password di database
 		const { error: errorUpdatePassword } = await supabase
@@ -204,6 +204,65 @@ const user = {
 			return { status: "err", msg: errorUpdatePassword.message };
 		}
 		return { status: "ok", msg: "Password updated successfully"};
+	},
+	existingEmail: async(data) => {
+		const {email} = data.email
+
+		const {error} = await supabase
+			.from("user")
+			.select("id")
+			.eq("email", email)
+		if(error){
+			return{ status: "err", msg: error.message}
+		}
+
+		return {status: "ok", msg: "Email exist"}
+	},
+	lupaPassword: async(data) => {
+		const {email, nama, tanggal_lahir} = data
+		const {error: errUser, data: user} = await supabase
+			.from("user")
+			.select("id, nama")
+			.eq("email", email)
+
+		if(errUser){
+			return{ status: "err", msg: errUser.message}
+		}
+		if(!user.length){
+			return{ status: "err", msg: "nama tidak valid"}
+		}
+		if(user[0].nama !== nama){
+			return{status: "err", msg: "nama tidak valid"}
+		}
+
+		const {error: errttl, data: ttl} = await supabase
+			.from("biodata")
+			.select("tanggal_lahir")
+			.eq("id_user", user[0].id)
+
+		if(errttl){
+			return{ status: "err", msg: errttl.message}
+		}
+		if(ttl[0].tanggal_lahir === tanggal_lahir){
+			return{status: "ok", msg: "nama dan tanggal lahir valid"}
+		}
+
+		return{status: "err", msg: "tanggal lahir tidak valid"}
+	},
+	changePassword: async(data) => {
+		const {email, password} = data
+
+		const hashedPassword = await bcrypt.hash(password, 12);
+		
+		const {error} = await supabase
+			.from("user")
+			.update({"password": hashedPassword})
+			.eq("email", email)
+
+		if(error){
+			return{ status: "err", msg: error.message}
+		}
+		return{status: "ok", msg: "berhasil ganti password"}
 	}
 };
 
