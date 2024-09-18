@@ -79,6 +79,35 @@ const survei = {
     });
   },
 
+  getDataHasil: async (req, res) => {
+    model.getDataHasil(req.body).then((result) => {
+      if (result.status == "ok") {
+        success(res, result.data);
+      } else {
+        error(res, result.msg);
+      }
+    });
+  },
+
+  insertRiwayatSurvei: async (req, res) => {
+    model.insertRiwayatSurvei(req.body).then((result) => {
+      if (result.status == "ok") {
+        success(res, result.data);
+      } else {
+        error(res, result.msg);
+      }
+    });
+  },
+
+  getDataList: async (req, res) => {
+    model.getDataList(req.body).then((result) => {
+      if (result.status == "ok") {
+        success(res, result.data);
+      } else {
+        error(res, result.msg);
+      }
+    });
+  },
 };
 
 module.exports = survei;

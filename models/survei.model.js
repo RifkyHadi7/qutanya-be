@@ -5,8 +5,6 @@ const { authenticate } = require("@google-cloud/local-auth");
 const supabase = require("../constraint/database");
 const midtransClient = require("midtrans-client");
 const saldo = require("./saldo.model");
-const { response } = require("express");
-const kategori = require("./kategori.model");
 
 const survei = {
   create: async ({
@@ -152,15 +150,17 @@ const survei = {
       return { status: "err", msg: err.message };
     }
   },
-  getResponses: async ({ form_meta_req }) => {
+  getResponses: async ({ form_meta_req, accessToken }) => {
     // Autentikasi dengan Google Forms API
-    const auth = await authenticate({
-      keyfilePath: path.join(__dirname, "../credentials.json"),
-      scopes: ["https://www.googleapis.com/auth/forms.responses.readonly"],
-    });
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.CLIENT_ID,
+      process.env.CLIENT_SECRET
+    );
 
-    // Buat instance Forms API dengan autentikasi
-    const forms = google.forms({ version: "v1", auth });
+    // Mengautentikasi pengguna menggunakan OAuth 2.0
+    oauth2Client.setCredentials({ access_token: accessToken });
+
+    const forms = google.forms({ version: "v1", auth: oauth2Client });
 
     try {
       // Mendapatkan respons dari form
@@ -194,69 +194,88 @@ const survei = {
   claimReward: async ({ link_form, id_user_create }) => {
     try {
       const responseLinkPattern =
-        /https:\/\/docs\.google\.com\/forms\/d\/e\/.*\/formResponse/;
-
+        /https:\/\/docs\.google\.com\/forms(\/u\/\d+)?\/d\/e\/.*\/formResponse/;
+      // https://docs.google.com/forms/u/3/d/e/1FAIpQLSffwLgRukPwADbkIuzBec4lkcsb6tK-7YquS_eOEGjKiOnCVQ/formResponse?pli=1
+      // https://docs.google.com/forms/u/3/d/e/1FAIpQLSeh6mG4VT9j2EdyX_TiMEnyycKJeWdNgpmawH5gVlsx_Sa6cA/formResponse?pli=1
       // Optionally, check for a response link (if needed)
-      if (link_form && !responseLinkPattern.test(link_form)) {
+      if (!responseLinkPattern.test(link_form)) {
         throw new Error(
           "Please provide the correct response link (after form submission)."
         );
       }
 
       const id_form = link_form.match(
-        /https:\/\/docs\.google\.com\/forms\/d\/e\/([^\/]+)\/formResponse/
+        /https:\/\/docs\.google\.com\/forms(\/u\/\d+)?\/d\/e\/([^\/]+)\/formResponse/
       );
-
-      const dataForm = await getSurveiByForm(id_form[1]);
+      
+      const { dataForm, error_form } = await getSurveiByForm(id_form[2]);
 
       if (!dataForm) {
         throw new Error(
-          "Please provide the correct response link (after form submission)."
+          "Please provide the correct link survei form from Qutanya.id"
         );
       }
 
-      
-      const {user, error_get_user }= await getUserById(id_user_create);
+      if (dataForm.saldo < dataForm.hadiah) {
+        const { survei_data, error_survei } = getAndUpdateFormStatus(
+          dataForm.id
+        );
+      }
 
+      const { data, error_get_user } = await getUserById(id_user_create);
+
+      const biodata = data.biodata[0];
       if (error_get_user) {
-        throw new error_get_user;
-      }
-       
-      const isClaimed = checkClaimExists(user.email, id_form[1])
-
-      if (isClaimed){
-        throw new Error("Sorry you have claimed")
+        throw new Error(error_get_user);
       }
 
-      const { error_claim } = await supabase.from("claim").insert([
-        {
-          email: user.email,
-          nama: user.nama,
-          tanggal_lahir: user.biodata.tanggal_lahir,
-          gender: user.biodata.gender,
-          pekerjaan: user.biodata.pekerjaan,
-          judul_survei: dataForm.judul,
-          provinsi: user.biodata.provinsi,
-          kota: user.biodata.kota,
-        },
-      ]);
+      const isClaimed = await checkClaimExists(data.email, id_form[2]);
 
-      if (error_claim) {
-        throw new error_claim;
+      if (isClaimed) {
+        throw new Error("Sorry you have claimed");
       }
 
       let keterangan = "Add reward survei " + dataForm.judul;
 
-      const transaksiData = await saldo.addTransaksi(
-        id_user_create,
-        dataForm.hadiah,
-        true,
-        keterangan
-      );
+      const { status: transaksiData, msg: error_transaksi } =
+        await saldo.addTransaksi({
+          id_user: id_user_create,
+          nominal: Math.ceil(dataForm.hadiah),
+          pemasukan: true,
+          keterangan: keterangan,
+        });
+      if (transaksiData != "ok") {
+        throw new Error(error_transaksi);
+      }
 
+      const { error_claim } = await supabase.from("claim").insert([
+        {
+          email: data.email,
+          nama: data.nama,
+          tanggal_lahir: biodata.tanggal_lahir,
+          gender: biodata.gender,
+          pekerjaan: biodata.pekerjaan,
+          judul_survei: dataForm.judul,
+          provinsi: biodata.provinsi,
+          kota: biodata.kota,
+          id_form: dataForm.id_form,
+        },
+      ]);
+
+      if (error_claim) {
+        throw new Error(error_claim);
+      }
+
+      const { error_update_saldo } = await getAndUpdateFormSaldo(dataForm.id, dataForm.hadiah );
+
+      if (error_update_saldo) {
+        throw new Error(error_update_saldo);
+      }
+
+      const updateSaldo = data.saldo + dataForm.hadiah;
       return {
         status: "ok",
-        saldo : updateSaldo,
+        saldo: updateSaldo,
         message: transaksiData.msg,
       };
     } catch (error) {
@@ -264,8 +283,64 @@ const survei = {
     }
   },
 
-  callbackPayment: async (notification) => {
+  getDataHasil: async ({ id_form }) => {
+    try {
+      const { data, error } = await getCLaimByForm(id_form);
 
+      if (error) {
+        throw new Error(error);
+      }
+      return {
+        status: "ok",
+        data,
+      };
+    } catch (error) {
+      return { status: "err", msg: error.message };
+    }
+  },
+
+  insertRiwayatSurvei: async ({ id_user, id_survei }) => {
+    try {
+      // Cek apakah data sudah ada
+      const { data: existingData, error: selectError } = await supabase
+        .from("riwayat_survei")
+        .select("*")
+        .eq("id_survei", id_survei)
+        .eq("id_user", id_user);
+
+      if (selectError) {
+        throw new Error(selectError.message);
+      }
+
+      // Jika data sudah ada, tidak perlu insert
+      if (existingData && existingData.length > 0) {
+        throw new Error(
+          "Data already exists. You cannot participate in this survey again."
+        );
+      }
+
+      // Jika data tidak ada, lakukan insert
+      const { data, error } = await supabase.from("riwayat_survei").insert([
+        {
+          id_user: parseInt(id_user),
+          id_survei: parseInt(id_survei),
+        },
+      ]);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return {
+        status: "ok",
+        data,
+      };
+    } catch (error) {
+      return { status: "err", msg: error.message };
+    }
+  },
+
+  callbackPayment: async (notification) => {
     if (!notification || typeof notification !== "object") {
       return { status: "err", msg: "Invalid notification format." };
     }
@@ -356,7 +431,6 @@ const survei = {
     try {
       if (!filter) {
         const data = await getSurveiAll(filter);
-
         return {
           status: "ok",
           data,
@@ -365,6 +439,19 @@ const survei = {
       const filterArray = filter.split(",").map(Number);
 
       const data = await getSurveiAll(filterArray);
+
+      return {
+        status: "ok",
+        data,
+      };
+    } catch (error) {
+      return { status: "err", msg: error.message };
+    }
+  },
+
+  getDataList: async () => {
+    try {
+      const data = await getSurveiList();
 
       return {
         status: "ok",
@@ -427,12 +514,11 @@ const survei = {
 };
 
 async function getUserById(userId) {
-  const { data, error } = await supabase
+  const { data: data, error } = await supabase
     .from("user") // The name of your table in the database
-    .select("*")
+    .select("*, biodata(*)")
     .eq("id", userId)
     .single();
-
   if (error) {
     console.error("Error fetching user:", error);
     return null;
@@ -457,7 +543,6 @@ async function getSurveiById(Id) {
 }
 
 async function getSurveiByOrderiD(orderId) {
-  console.log(orderId);
   const { data, error } = await supabase
     .from("survei")
     .select("*")
@@ -480,6 +565,67 @@ async function updateSurveiStatus(surveiId, status_payment, status_survei) {
   return { error };
 }
 
+async function getAndUpdateFormSaldo(surveiId, saldo) {
+  // First, retrieve the existing data
+  const { data: surveiData, error: fetchError } = await supabase
+    .from("survei")
+    .select("*")
+    .eq("id", surveiId)
+    .single(); // Assuming order_id is unique and returns one row
+  console.log(surveiData);
+  if (fetchError) {
+    console.error("Error fetching survei data:", fetchError);
+    return { error: fetchError };
+  }
+
+  const currentSaldo = surveiData.saldo - saldo;
+  // Now, update the necessary fields
+  const { error: updateError } = await supabase
+    .from("survei")
+    .update({
+      saldo: currentSaldo,
+    })
+    .eq("id", surveiId);
+
+  if (updateError) {
+    console.error("Error updating survei status:", updateError);
+    return { error: updateError };
+  }
+
+  // Return the updated survei data if needed
+  return { data: surveiData, message: "Update successful" };
+}
+
+async function getAndUpdateFormStatus(surveiId) {
+  // First, retrieve the existing data
+  const { data: surveiData, error: fetchError } = await supabase
+    .from("survei")
+    .select("*")
+    .eq("id", surveiId)
+    .single(); // Assuming order_id is unique and returns one row
+
+  if (fetchError) {
+    console.error("Error fetching survei data:", fetchError);
+    return { error: fetchError };
+  }
+
+  // Now, update the necessary fields
+  const { error: updateError } = await supabase
+    .from("survei")
+    .update({
+      status: "close",
+    })
+    .eq("id", surveiId);
+
+  if (updateError) {
+    console.error("Error updating survei status:", updateError);
+    return { error: updateError };
+  }
+
+  // Return the updated survei data if needed
+  return { data: surveiData, message: "Update successful" };
+}
+
 async function getKategoriData(kategoriIds) {
   const { data: kategori, error } = await supabase
     .from("kategori_filter")
@@ -494,14 +640,30 @@ async function getKategoriData(kategoriIds) {
 }
 
 async function getSurveiByForm(formData) {
-  const { data, error } = await supabase
+  const { data: dataForm, error } = await supabase
     .from("survei")
     .select("*")
     .eq("id_form", formData)
+    .limit(1)
     .single();
 
   if (error) {
     console.error("Error fetching survei:", error);
+    console.log(error);
+    return {dataForm, error};
+  }
+
+  return { dataForm, error };
+}
+
+async function getCLaimByForm(formData) {
+  const { data: data, error } = await supabase
+    .from("claim")
+    .select("*")
+    .eq("id_form", formData)
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("Error fetching klaim", error);
     return null;
   }
 
@@ -519,7 +681,6 @@ async function getSurveiAll(filter) {
       .order("created_at", { ascending: false })
       .in("id_filter", filter);
 
-    console.log(res);
     if (error) {
       throw new Error(`Error fetching survei with filter: ${error.message}`);
     }
@@ -545,7 +706,9 @@ async function getSurveiAll(filter) {
     const { data, error } = await supabase
       .from("survei")
       .select(`*, user(id, nama), kategori_survei(*,kategori_filter(*))`)
-      .order("created_at", { ascending: false });
+      .eq("status", "open")
+      .order("created_at", { ascending: false })
+      .limit(20);
 
     if (error) {
       throw new Error(`Error fetching survei: ${error.message}`);
@@ -557,8 +720,22 @@ async function getSurveiAll(filter) {
   return query;
 }
 
-async function getRiwayatSurvei(id_user) {
+async function getSurveiList() {
   const { data, error } = await supabase
+    .from("survei")
+    .select(`*, user(id, nama), kategori_survei(*,kategori_filter(*))`)
+    .order("status", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Error fetching survei: ${error.message}`);
+  }
+
+  return { data, error };
+}
+
+async function getRiwayatSurvei(id_user) {
+  const { data: data, error } = await supabase
     .from("riwayat_survei")
     .select(`*, survei(*)`)
     .eq("id_user", id_user)
@@ -587,15 +764,15 @@ async function getRiwayatSurveiMy(id_user) {
 }
 
 async function checkClaimExists(email, id_form) {
-  const { data, error } = await supabase
-    .from('claim')  // Replace 'users' with your table name
-    .select('*')    // Select all fields (or specific ones if needed)
-    .eq('email', email)  // Check for email equality
-    .eq('id_form', id_form);       // Check for id equality
+  const { data: data, error } = await supabase
+    .from("claim") // Replace 'users' with your table name
+    .select("*") // Select all fields (or specific ones if needed)
+    .eq("email", email) // Check for email equality
+    .eq("id_form", id_form); // Check for id equality
 
   if (error) {
     console.error("Error fetching user:", error);
-    return false;  // Handle error appropriately
+    return false; // Handle error appropriately
   }
 
   // Check if any rows are returned
