@@ -37,6 +37,33 @@ const user = {
             error(res, result.msg);
           }
     })
+  },
+  existingEmail: async (req, res) => {
+    model.existingEmail(req.body).then((result) => {
+        if (result.status == "ok") {
+            success(res, result.msg);
+          } else {
+            error(res, result.msg);
+          }
+    })
+  },
+  lupaPassword: async (req, res) => {
+    model.lupaPassword(req.body).then((result) => {
+        if (result.status == "ok") {
+            success(res, result.msg);
+          } else {
+            error(res, result.msg);
+          }
+    })
+  },
+  changePassword: async (req, res) => {
+    model.changePassword(req.body).then((result) => {
+        if (result.status == "ok") {
+            success(res, result.msg);
+          } else {
+            error(res, result.msg);
+          }
+    })
   }
 };
 

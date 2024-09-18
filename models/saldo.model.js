@@ -37,7 +37,6 @@ const saldo = {
         if (errorSaldo) {
             return {status: "err", msg: errorSaldo};
         }
-        
         let currentSaldo = saldo[0].saldo;
 
         // Adjust saldo based on pemasukan
@@ -60,8 +59,6 @@ const saldo = {
         const {error: errorInsertTransaksi} = await supabase
             .from("riwayat_transaksi")
             .insert([{id_user: id_user, nominal: nominal, pemasukan: pemasukan, keterangan: keterangan}]);
-
-            console.log(errorInsertTransaksi);
         if (errorInsertTransaksi) {
             return {status: "err", msg: errorInsertTransaksi};
         }
